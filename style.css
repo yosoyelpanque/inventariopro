@@ -183,7 +183,6 @@ body {
     width: 100%;
     height: auto;
     border-radius: 0.5rem;
-    transform: scaleX(-1);
 }
 .read-only-overlay {
     position: fixed;
@@ -278,4 +277,5 @@ body {
     #item-detail-view-modal.show .modal-content {
         transform: translateY(0);
     }
+
 }
