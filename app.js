@@ -2408,23 +2408,61 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.employeeNumberInput.value = '';
     }
     
-    async function startCamera() {
-        if (state.readOnlyMode) return;
-        const { cameraStream, uploadContainer, cameraViewContainer } = elements.photo;
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            try {
-                state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                cameraStream.srcObject = state.cameraStream;
-                uploadContainer.classList.add('hidden');
-                cameraViewContainer.classList.remove('hidden');
-            } catch (err) {
-                showToast('No se pudo acceder a la cámara. Revisa los permisos.', 'error');
-                console.error("Error al acceder a la cámara: ", err);
+    // --- REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA ---
+async function startCamera() {
+    if (state.readOnlyMode) return;
+    const { cameraStream, uploadContainer, cameraViewContainer } = elements.photo;
+
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        try {
+            // 1. Obtener todos los dispositivos de video (cámaras)
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+            // 2. Filtrar solo las cámaras traseras
+            const backCameras = videoDevices.filter(device => device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('trasera'));
+            
+            let chosenCameraId = null;
+
+            if (backCameras.length > 0) {
+                // 3. Si hay varias cámaras traseras, intentar encontrar la "principal"
+                // Buscamos una que NO sea gran angular o teleobjetivo.
+                const mainCamera = backCameras.find(camera => 
+                    !camera.label.toLowerCase().includes('wide') && 
+                    !camera.label.toLowerCase().includes('angular') &&
+                    !camera.label.toLowerCase().includes('telephoto')
+                );
+
+                // Si encontramos una "principal", usamos su ID. Si no, usamos la primera de la lista.
+                chosenCameraId = mainCamera ? mainCamera.deviceId : backCameras[0].deviceId;
+            } else if (videoDevices.length > 0) {
+                // Si no se pudo identificar una cámara trasera, usar la primera cámara disponible
+                chosenCameraId = videoDevices[0].deviceId;
             }
-        } else {
-            showToast('Tu navegador no soporta el acceso a la cámara.', 'error');
+
+            if (!chosenCameraId) {
+                showToast('No se encontraron cámaras disponibles.', 'error');
+                return;
+            }
+
+            // 4. Iniciar la cámara usando el ID de la cámara seleccionada
+            const constraints = {
+                video: { deviceId: { exact: chosenCameraId } }
+            };
+            state.cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            cameraStream.srcObject = state.cameraStream;
+
+            uploadContainer.classList.add('hidden');
+            cameraViewContainer.classList.remove('hidden');
+
+        } catch (err) {
+            showToast('No se pudo acceder a la cámara. Revisa los permisos.', 'error');
+            console.error("Error al acceder a la cámara: ", err);
         }
+    } else {
+        showToast('Tu navegador no soporta el acceso a la cámara.', 'error');
     }
+}
     
     function stopCamera() {
         if (state.cameraStream) {
