@@ -2408,7 +2408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.employeeNumberInput.value = '';
     }
     
-    // --- REEMPLAZA TU FUNCIÓN startCamera ACTUAL CON ESTA VERSIÓN MÁS ESTRICTA ---
+    // --- REEMPLAZA TU FUNCIÓN startCamera CON ESTA VERSIÓN QUE PRIORIZA LA CÁMARA TELEFOTO ---
 async function startCamera() {
     if (state.readOnlyMode) return;
     const { cameraStream, uploadContainer, cameraViewContainer } = elements.photo;
@@ -2425,32 +2425,32 @@ async function startCamera() {
             let chosenCameraId = null;
 
             if (backCameras.length > 0) {
-                // --- INICIO DE LA NUEVA LÓGICA MEJORADA ---
+                // --- INICIO DE LA NUEVA LÓGICA CON PRIORIDAD TELEFOTO ---
 
-                // Prioridad 1: Buscar una cámara "estándar" que no tenga etiquetas especiales.
-                let mainCamera = backCameras.find(camera => 
-                    !camera.label.toLowerCase().includes('wide') && 
-                    !camera.label.toLowerCase().includes('angular') &&
-                    !camera.label.toLowerCase().includes('telephoto')
+                // Prioridad 1: Buscar explícitamente la cámara "telephoto".
+                const telephotoCamera = backCameras.find(camera => 
+                    camera.label.toLowerCase().includes('telephoto') || 
+                    camera.label.toLowerCase().includes('teleobjetivo')
                 );
 
-                if (mainCamera) {
-                    // ¡Éxito! La encontramos en el primer intento.
-                    chosenCameraId = mainCamera.deviceId;
+                if (telephotoCamera) {
+                    // ¡Éxito! Encontramos la teleobjetivo. La usamos.
+                    chosenCameraId = telephotoCamera.deviceId;
                 } else {
-                    // Prioridad 2: Si el primer intento falla, filtramos explícitamente las que NO queremos.
-                    const candidateCameras = backCameras.filter(camera => 
-                        !camera.label.toLowerCase().includes('wide') &&
+                    // Fallback: Si no hay teleobjetivo, buscar la cámara "principal" (que no sea wide/angular).
+                    console.warn("No se encontró una cámara teleobjetivo. Buscando la cámara principal como alternativa.");
+                    
+                    const mainCamera = backCameras.find(camera => 
+                        !camera.label.toLowerCase().includes('wide') && 
                         !camera.label.toLowerCase().includes('angular')
                     );
 
-                    if (candidateCameras.length > 0) {
-                        // De las candidatas restantes (que podrían incluir la telephoto), elegimos la primera.
-                        chosenCameraId = candidateCameras[0].deviceId;
+                    if (mainCamera) {
+                        // Encontramos una cámara "principal" como fallback.
+                        chosenCameraId = mainCamera.deviceId;
                     } else {
-                        // Último recurso: si TODAS las cámaras se llaman "wide" o "angular",
-                        // no tenemos más opción que elegir la primera de la lista original para que no falle.
-                        console.warn("Todas las cámaras parecen ser 'wide' o 'angular'. Se usará la primera disponible como último recurso.");
+                        // Último recurso: si no se encontró ni teleobjetivo ni principal, usar la primera de la lista.
+                        console.warn("No se pudo identificar una cámara principal. Se usará la primera disponible como último recurso.");
                         chosenCameraId = backCameras[0].deviceId;
                     }
                 }
@@ -3237,3 +3237,4 @@ async function startCamera() {
     initialize();
 
 });
+
