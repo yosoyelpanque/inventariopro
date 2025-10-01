@@ -2408,7 +2408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.employeeNumberInput.value = '';
     }
     
-    // --- REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA ---
+    // --- REEMPLAZA TU FUNCIÓN startCamera ACTUAL CON ESTA VERSIÓN MÁS ESTRICTA ---
 async function startCamera() {
     if (state.readOnlyMode) return;
     const { cameraStream, uploadContainer, cameraViewContainer } = elements.photo;
@@ -2425,16 +2425,37 @@ async function startCamera() {
             let chosenCameraId = null;
 
             if (backCameras.length > 0) {
-                // 3. Si hay varias cámaras traseras, intentar encontrar la "principal"
-                // Buscamos una que NO sea gran angular o teleobjetivo.
-                const mainCamera = backCameras.find(camera => 
+                // --- INICIO DE LA NUEVA LÓGICA MEJORADA ---
+
+                // Prioridad 1: Buscar una cámara "estándar" que no tenga etiquetas especiales.
+                let mainCamera = backCameras.find(camera => 
                     !camera.label.toLowerCase().includes('wide') && 
                     !camera.label.toLowerCase().includes('angular') &&
                     !camera.label.toLowerCase().includes('telephoto')
                 );
 
-                // Si encontramos una "principal", usamos su ID. Si no, usamos la primera de la lista.
-                chosenCameraId = mainCamera ? mainCamera.deviceId : backCameras[0].deviceId;
+                if (mainCamera) {
+                    // ¡Éxito! La encontramos en el primer intento.
+                    chosenCameraId = mainCamera.deviceId;
+                } else {
+                    // Prioridad 2: Si el primer intento falla, filtramos explícitamente las que NO queremos.
+                    const candidateCameras = backCameras.filter(camera => 
+                        !camera.label.toLowerCase().includes('wide') &&
+                        !camera.label.toLowerCase().includes('angular')
+                    );
+
+                    if (candidateCameras.length > 0) {
+                        // De las candidatas restantes (que podrían incluir la telephoto), elegimos la primera.
+                        chosenCameraId = candidateCameras[0].deviceId;
+                    } else {
+                        // Último recurso: si TODAS las cámaras se llaman "wide" o "angular",
+                        // no tenemos más opción que elegir la primera de la lista original para que no falle.
+                        console.warn("Todas las cámaras parecen ser 'wide' o 'angular'. Se usará la primera disponible como último recurso.");
+                        chosenCameraId = backCameras[0].deviceId;
+                    }
+                }
+                // --- FIN DE LA NUEVA LÓGICA ---
+
             } else if (videoDevices.length > 0) {
                 // Si no se pudo identificar una cámara trasera, usar la primera cámara disponible
                 chosenCameraId = videoDevices[0].deviceId;
@@ -2445,7 +2466,7 @@ async function startCamera() {
                 return;
             }
 
-            // 4. Iniciar la cámara usando el ID de la cámara seleccionada
+            // Iniciar la cámara usando el ID de la cámara seleccionada
             const constraints = {
                 video: { deviceId: { exact: chosenCameraId } }
             };
@@ -3214,4 +3235,5 @@ async function startCamera() {
     }
 
     initialize();
+
 });
