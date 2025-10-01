@@ -2412,70 +2412,12 @@ document.addEventListener('DOMContentLoaded', () => {
 async function startCamera() {
     if (state.readOnlyMode) return;
     const { cameraStream, uploadContainer, cameraViewContainer } = elements.photo;
-
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-            // 1. Obtener todos los dispositivos de video (cámaras)
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-
-            // 2. Filtrar solo las cámaras traseras
-            const backCameras = videoDevices.filter(device => device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('trasera'));
-            
-            let chosenCameraId = null;
-
-            if (backCameras.length > 0) {
-                // --- INICIO DE LA NUEVA LÓGICA CON PRIORIDAD TELEFOTO ---
-
-                // Prioridad 1: Buscar explícitamente la cámara "telephoto".
-                const telephotoCamera = backCameras.find(camera => 
-                    camera.label.toLowerCase().includes('telephoto') || 
-                    camera.label.toLowerCase().includes('teleobjetivo')
-                );
-
-                if (telephotoCamera) {
-                    // ¡Éxito! Encontramos la teleobjetivo. La usamos.
-                    chosenCameraId = telephotoCamera.deviceId;
-                } else {
-                    // Fallback: Si no hay teleobjetivo, buscar la cámara "principal" (que no sea wide/angular).
-                    console.warn("No se encontró una cámara teleobjetivo. Buscando la cámara principal como alternativa.");
-                    
-                    const mainCamera = backCameras.find(camera => 
-                        !camera.label.toLowerCase().includes('wide') && 
-                        !camera.label.toLowerCase().includes('angular')
-                    );
-
-                    if (mainCamera) {
-                        // Encontramos una cámara "principal" como fallback.
-                        chosenCameraId = mainCamera.deviceId;
-                    } else {
-                        // Último recurso: si no se encontró ni teleobjetivo ni principal, usar la primera de la lista.
-                        console.warn("No se pudo identificar una cámara principal. Se usará la primera disponible como último recurso.");
-                        chosenCameraId = backCameras[0].deviceId;
-                    }
-                }
-                // --- FIN DE LA NUEVA LÓGICA ---
-
-            } else if (videoDevices.length > 0) {
-                // Si no se pudo identificar una cámara trasera, usar la primera cámara disponible
-                chosenCameraId = videoDevices[0].deviceId;
-            }
-
-            if (!chosenCameraId) {
-                showToast('No se encontraron cámaras disponibles.', 'error');
-                return;
-            }
-
-            // Iniciar la cámara usando el ID de la cámara seleccionada
-            const constraints = {
-                video: { deviceId: { exact: chosenCameraId } }
-            };
-            state.cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             cameraStream.srcObject = state.cameraStream;
-
             uploadContainer.classList.add('hidden');
             cameraViewContainer.classList.remove('hidden');
-
         } catch (err) {
             showToast('No se pudo acceder a la cámara. Revisa los permisos.', 'error');
             console.error("Error al acceder a la cámara: ", err);
@@ -3237,4 +3179,5 @@ async function startCamera() {
     initialize();
 
 });
+
 
